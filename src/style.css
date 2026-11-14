@@ -1,0 +1,47 @@
+:root {
+  color-scheme: dark;
+  background: #000;
+  color: #fff8fa;
+  font-family: Georgia, 'Times New Roman', serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+#garden {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#garden:focus { outline: none; }
+#garden:focus-visible { outline: 1px solid #f3b1da; outline-offset: -4px; }
+canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+#hint, #failure {
+  position: absolute;
+  inset-inline: max(12px, env(safe-area-inset-left), env(safe-area-inset-right));
+  top: 52%;
+  transform: translateY(-50%);
+  margin: 0;
+  text-align: center;
+  pointer-events: none;
+  font-size: clamp(17px, 2.15vw, 32px);
+  font-weight: 400;
+  letter-spacing: .018em;
+  text-shadow: 0 2px 9px #000, 0 2px 18px #000;
+  transition: opacity 760ms ease;
+}
+#hint.dismissed { opacity: 0; }
+.touch { display: none; }
+@media (pointer: coarse) { .touch { display: inline; } .mouse { display: none; } }
+@media (prefers-reduced-motion: reduce) { #hint { transition: none; } }
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

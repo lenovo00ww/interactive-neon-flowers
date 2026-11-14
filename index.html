@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#000000">
+  <meta name="description" content="An interactive garden of luminous flowers. Touch the dark to bring another flower to life.">
+  <title>Interactive Neon Flowers</title>
+  <link rel="icon" href="data:,">
+</head>
+<body>
+  <main id="garden" tabindex="0" aria-label="Neon flower garden. Press Enter or Space to plant a flower.">
+    <canvas id="scene" aria-hidden="true"></canvas>
+    <p id="hint"><span class="mouse">Click To Add Flowers</span><span class="touch">Tap To Add Flowers</span></p>
+    <span id="announcement" role="status" class="visually-hidden"></span>
+    <p id="failure" hidden>This browser couldn’t start the garden.</p>
+  </main>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
