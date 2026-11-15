@@ -74,8 +74,9 @@ function plant(x, y, preset) {
     phase: random() * Math.PI * 2,
     speed: .53 + random() * .45,
     depth: .74 + random() * .26,
-    aspect: .91 + random() * .20,
-    tilt: (random() - .5) * .26,
+    aspect: .89 + random() * .22,
+    pitch: .76 + .22 * (Math.sin(position.x * .083 + position.y) * .5 + .5),
+    tilt: (random() - .5) * .39,
     green: Math.floor(random() * 3),
     textureOffset: Math.floor(random() * 5),
     variations: Array.from({ length: 5 }, () => .87 + random() * .27),
@@ -97,11 +98,12 @@ function plant(x, y, preset) {
 function seedGarden() {
   const compact = scene.width < 580;
   const initial = compact
-    ? [[.15, .405, .56, 1, -.36, .38], [.38, .294, 1.17, 0, .38, -.55],
-      [.72, .342, .69, 2, .38, .78], [.85, .64, .67, 1, -.29, .67]]
-    : [[.12, .40, .62, 4, -.27, .66], [.27, .332, .78, 1, -.28, -.47],
-      [.42, .268, 1.22, 0, .58, -.64], [.63, .65, .78, 3, .24, .77],
-      [.77, .327, .74, 2, .40, -.53], [.88, .455, .57, 1, -.19, .40]];
+    ? [[.15, .401, .53, 4, -.38, .98], [.40, .32, 1.10, 0, .47, -.96],
+      [.76, .362, .72, 2, -.42, 1.02], [.86, .50, .48, 1, -.35, .80],
+      [.57, .646, .69, 3, .38, -.87]]
+    : [[.13, .39, .47, 4, -.32, .90], [.26, .47, .56, 1, -.34, -.85],
+      [.43, .32, 1.04, 0, .45, -.84], [.59, .65, .67, 3, .30, 1.05],
+      [.75, .32, .67, 2, .30, -.91], [.88, .48, .51, 1, -.25, .78]];
   for (const [x, y, scale, palette, root, bend] of initial) {
     plant(scene.width * x, scene.height * y, { scale, palette, root, bend });
   }
@@ -125,7 +127,7 @@ function render() {
     const opacity = flower.retired === null ? 1 : 1 - smooth((clock - flower.retired) / .75);
     drawStem(ctx, flower, scene, p.stem, sway, opacity, flower.tip);
     flower.opacity = opacity;
-    flower.rotation = flower.tilt + pulse * .046;
+    flower.rotation = flower.tilt + pulse * .042 + (motion.matches ? 0 : Math.sin(clock * .68 + flower.phase + .75) * .023);
   }
   // Put the thin stems behind the heads, including in a densely planted garden.
   for (const flower of scene.flowers) {

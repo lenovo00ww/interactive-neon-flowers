@@ -2,9 +2,9 @@ import { stemPoint } from './motion.js';
 
 const point = { x: 0, y: 0 };
 const green = [
-  ['#152d23', '#345842', '#86ae72'],
-  ['#1d362b', '#3e7954', '#a5cc83'],
-  ['#272d17', '#617344', '#bdd98a'],
+  ['#204136', '#58a775', '#a9d68c'],
+  ['#234d31', '#61a760', '#c3db8f'],
+  ['#35451e', '#849c49', '#d2df8b'],
 ];
 
 export function drawStem(ctx, flower, scene, progress, sway, alpha, tip) {
@@ -15,10 +15,10 @@ export function drawStem(ctx, flower, scene, progress, sway, alpha, tip) {
   const bend = flower.bend * Math.min(width * .1, height * .14);
   stemPoint(tip, progress, root, x, bend, bottom, y, sway);
   if (progress <= 0) return;
-  const thickness = Math.max(.78, flower.radius * .031);
+  const thickness = Math.max(1.07, flower.radius * .036);
   const segments = Math.max(4, Math.ceil(progress * 27));
   const gradient = ctx.createLinearGradient(0, bottom, 0, y);
-  green[flower.green].forEach((color, index) => gradient.addColorStop(index * .5, color));
+  green[flower.green].forEach((color, index) => gradient.addColorStop([0, .60, 1][index], color));
   ctx.globalAlpha = alpha * flower.depth;
   ctx.fillStyle = gradient;
   ctx.beginPath();

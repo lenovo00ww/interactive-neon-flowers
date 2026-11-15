@@ -41,7 +41,7 @@ try {
   ]) {
     const page = await open({ width, height }, { hasTouch: touch, isMobile: touch, deviceScaleFactor: touch ? 3 : 1 });
     const initial = await snapshot(page);
-    assert.equal(initial.active, width < 580 ? 4 : 6);
+    assert.equal(initial.active, width < 580 ? 5 : 6);
     assert.equal(initial.width, width);
     assert.equal(initial.height, height);
     const hasFlowerPixels = await page.evaluate(() => {
@@ -98,16 +98,15 @@ try {
   await stage.close();
 
   const dense = await open({ width: 390, height: 844 }, { hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
-  await dense.touchscreen.tap(195, 380);
   assert.equal((await snapshot(dense)).active, 5);
   await advance(dense, 2);
   await capture(dense, 'density-05');
-  let input = 1;
+  let input = 0;
   for (const count of [10, 20, 40]) {
-    for (let i = 0; i < count - input - 4; i++) {
+    for (let i = 0; i < count - input - 5; i++) {
       await dense.touchscreen.tap(42 + ((input + i) * 197) % 306, 75 + ((input + i) * 157) % 643);
     }
-    input = count - 4;
+    input = count - 5;
     assert.equal((await snapshot(dense)).added, input);
     assert.equal((await snapshot(dense)).active, count);
     await advance(dense, 2);

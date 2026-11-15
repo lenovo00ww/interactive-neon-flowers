@@ -20,14 +20,14 @@ export function growthAt(flower, age, result = {}) {
 }
 
 export function petalOpening(flower, age, index) {
-  const t = clamp((age - flower.stemTime + .07 - index * .038) / flower.petalTime);
+  const t = clamp((age - flower.stemTime + .07 - index * .044) / flower.petalTime);
   return smooth(t) + Math.sin(Math.PI * t) * t ** 2 * .20;
 }
 
 export function stemPoint(out, t, root, tip, bend, bottom, top, sway) {
   const u = 1 - t;
-  out.x = u ** 3 * root + 3 * u * u * t * (root - bend * .56)
-    + 3 * u * t * t * (tip + bend) + t ** 3 * tip + t * t * sway;
+  out.x = u ** 3 * root + 3 * u * u * t * (root - bend * 1.04)
+    + 3 * u * t * t * (tip + bend * 1.35) + t ** 3 * tip + t * t * sway;
   out.y = mix(bottom, top, t);
   return out;
 }
