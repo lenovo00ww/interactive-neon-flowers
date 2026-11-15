@@ -33,6 +33,15 @@ const snapshot = page => page.evaluate(() => gardenQA.snapshot());
 const advance = (page, seconds) => page.evaluate(value => gardenQA.advance(value), seconds);
 const capture = (page, name) => page.screenshot({ path: out + '/' + name + '.png' });
 
+const isBlack = page => page.evaluate(() => {
+  const canvas = document.querySelector('canvas');
+  const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  for (let i = 0; i < pixels.length; i += 4) {
+    if (pixels[i] || pixels[i + 1] || pixels[i + 2]) return false;
+  }
+  return true;
+});
+
 try {
   for (const [name, width, height, touch] of [
     ['desktop', 1440, 900, false], ['full-hd', 1920, 1080, false],
@@ -41,17 +50,11 @@ try {
   ]) {
     const page = await open({ width, height }, { hasTouch: touch, isMobile: touch, deviceScaleFactor: touch ? 3 : 1 });
     const initial = await snapshot(page);
-    assert.equal(initial.active, width < 580 ? 5 : 6);
+    assert.equal(initial.active, 0);
     assert.equal(initial.width, width);
     assert.equal(initial.height, height);
-    const hasFlowerPixels = await page.evaluate(() => {
-      const canvas = document.querySelector('canvas');
-      const ctx = canvas.getContext('2d');
-      const p = gardenQA.snapshot().flowers[0].tip;
-      const pixel = ctx.getImageData(p.x * canvas.width / innerWidth, (p.y - gardenQA.snapshot().flowers[0].radius * .45) * canvas.height / innerHeight, 1, 1).data;
-      return pixel[0] + pixel[1] + pixel[2] > 80;
-    });
-    assert.ok(hasFlowerPixels, 'rendered flower pixels');
+    assert.ok(await isBlack(page), 'empty canvas is pure black');
+    assert.equal(await page.locator('#hint, button').count(), 0);
     await capture(page, name);
     if (touch) await page.touchscreen.tap(width * .55, height * .46);
     else await page.mouse.click(width * .55, height * .46);
@@ -59,10 +62,9 @@ try {
     assert.equal(planted.added, 1);
     assert.equal(planted.active, initial.active + 1);
     assert.ok(Math.hypot(planted.flowers.at(-1).x - width * .55, planted.flowers.at(-1).y - height * .46) < 75);
-    if (touch) {
-      await advance(page, 2);
-      await capture(page, name + '-planted');
-    }
+    await advance(page, 2.45);
+    assert.ok(!(await isBlack(page)), "bloom is visible");
+    await capture(page, name + "-planted");
     await page.close();
     checks.push(name + ' ' + width + '×' + height + ': initial pixels, tap, coordinate mapping, no duplicate');
   }
@@ -98,18 +100,16 @@ try {
   await stage.close();
 
   const dense = await open({ width: 390, height: 844 }, { hasTouch: true, isMobile: true, deviceScaleFactor: 3 });
-  assert.equal((await snapshot(dense)).active, 5);
-  await advance(dense, 2);
-  await capture(dense, 'density-05');
   let input = 0;
-  for (const count of [10, 20, 40]) {
-    for (let i = 0; i < count - input - 5; i++) {
+  for (const count of [3, 5, 10, 12, 20, 40]) {
+    for (let i = 0; i < count - input; i++) {
       await dense.touchscreen.tap(42 + ((input + i) * 197) % 306, 75 + ((input + i) * 157) % 643);
     }
-    input = count - 5;
+    input = count;
     assert.equal((await snapshot(dense)).added, input);
     assert.equal((await snapshot(dense)).active, count);
-    await advance(dense, 2);
+    await advance(dense, 2.45);
+    if (count === 12) assert.equal(new Set((await snapshot(dense)).flowers.map(f => f.palette)).size, 12);
     await capture(dense, 'density-' + count);
   }
   await dense.touchscreen.tap(320, 810);
@@ -138,7 +138,8 @@ try {
   assert.deepEqual((await snapshot(reduced)).flowers.at(-1).tip, still.tip);
   assert.equal(still.progress.center, 1);
   await reduced.reload();
-  await reduced.waitForFunction(() => gardenQA.snapshot().active === 6);
+  await reduced.waitForFunction(() => gardenQA.snapshot().active === 0);
+  assert.ok(await isBlack(reduced));
   checks.push('Keyboard, reduced motion, refresh');
   await reduced.close();
   const live = await browser.newPage({ viewport: { width: 960, height: 660 },
@@ -146,8 +147,12 @@ try {
   const liveTarget = new URL(url);
   liveTarget.searchParams.set('qa', '1');
   assert.equal((await live.goto(liveTarget.href)).status(), 200);
-  await live.waitForFunction(() => gardenQA.snapshot().active === 6);
-  await live.waitForTimeout(430);
+  await live.waitForFunction(() => gardenQA.snapshot().active === 0);
+  assert.ok(await isBlack(live));
+  await live.waitForTimeout(10000);
+  assert.equal((await snapshot(live)).active, 0);
+  assert.ok(await isBlack(live));
+  await capture(live, "empty-after-10-seconds");
   await live.mouse.click(512, 315);
   await live.waitForFunction(() => gardenQA.snapshot().flowers.at(-1).progress.center === 1);
   await live.waitForTimeout(600);
@@ -162,6 +167,7 @@ try {
     await copyFile(raw, out + '/garden-demo.webm');
     await unlink(raw);
   }
+  checks.push('Empty after 10 real seconds and after refresh');
   checks.push('Real-time animation completes during regular requestAnimationFrame playback');
   assert.deepEqual(failures, []);
   checks.push('No console errors or failed requests');

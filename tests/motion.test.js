@@ -44,3 +44,15 @@ test('outer, middle and core layers unfold in order and all settle', () => {
   assert.ok(roseOpening(flower, age, 0, 0) > roseOpening(flower, age, 0, 6));
   for (let layer = 0; layer < 5; layer++) assert.equal(roseOpening(flower, 2.3, layer, 0), 1);
 });
+
+test('pink deck uses all twelve tones and alternates shade families', async () => {
+  const { pinkSequence, pinkTones } = await import('../src/rosePalette.js');
+  assert.equal(new Set(pinkTones).size, 12);
+  const pick = pinkSequence(seededRandom(8));
+  const tones = Array.from({ length: 24 }, pick);
+  assert.equal(new Set(tones.slice(0, 12)).size, 12);
+  assert.equal(new Set(tones.slice(12)).size, 12);
+  for (let i = 1; i < tones.length; i++) {
+    assert.notEqual(Math.floor(tones[i] / 4), Math.floor(tones[i - 1] / 4));
+  }
+});

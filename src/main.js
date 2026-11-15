@@ -2,17 +2,18 @@ import './style.css';
 import { clamp, growthAt, roseOpening, seededRandom, smooth } from './motion.js';
 import { constrain, flowerSize, place } from './placement.js';
 import { createTextures, drawFlower } from './petals.js';
+import { pinkSequence } from './rosePalette.js';
 import { drawStem } from './stem.js';
 
 const garden = document.querySelector('#garden');
 const canvas = document.querySelector('#scene');
-const hint = document.querySelector('#hint');
 const announcement = document.querySelector('#announcement');
 const motion = matchMedia('(prefers-reduced-motion: reduce)');
 const ctx = canvas.getContext('2d', { alpha: false });
 const query = new URLSearchParams(location.search);
 const testing = query.has('qa');
 const random = seededRandom(query.has('seed') ? Number(query.get('seed')) : 78126);
+const nextPink = pinkSequence(random);
 const scene = { width: 1, height: 1, safe: {}, flowers: [], dpr: 1 };
 let quality = 2;
 let added = 0;
@@ -57,25 +58,25 @@ function resize() {
   if (motion.matches || manual !== null) render();
 }
 
-function plant(x, y, preset) {
-  const palette = preset?.palette ?? Math.floor(random() * 5);
+function plant(x, y) {
+  const palette = nextPink();
   const density = scene.width < 580 ? smooth((scene.flowers.length - 9) / 26) : 0;
-  const scale = preset?.scale ?? ((.46 + random() * .54) * (1 - density * .22));
+  const scale = (.58 + random() * .47) * (1 - density * .22);
   const radius = flowerSize(scene.width, scene.height, scale);
-  const position = place(x, y, scene, radius, !preset);
+  const position = place(x, y, scene, radius);
   const flower = {
     position, scale, radius, palette,
     nx: position.x / scene.width, ny: position.y / scene.height,
-    born: clock - (preset ? 3 : 0), retired: null,
+    born: clock, retired: null,
     stemTime: .63 + random() * .34,
-    petalTime: .58 + random() * .16,
-    root: preset?.root ?? (random() - .5) * 1.65,
-    bend: preset?.bend ?? (random() - .5) * 2.3,
+    petalTime: .54 + random() * .14,
+    root: (random() - .5) * 1.1,
+    bend: (random() - .5) * 1.95,
     phase: random() * Math.PI * 2,
     speed: .53 + random() * .45,
     depth: .74 + random() * .26,
     aspect: .89 + random() * .22,
-    pitch: .86 + .24 * (Math.sin(position.x * .083 + position.y) * .5 + .5),
+    pitch: .87 + .27 * (Math.sin(position.x * .083 + position.y) * .5 + .5),
     tilt: (random() - .5) * .53,
     green: Math.floor(random() * 3),
     variant: Math.floor(random() * 3),
@@ -92,20 +93,6 @@ function plant(x, y, preset) {
   // Keep a small allowance for fades even under unusually dense input.
   if (scene.flowers.length > 50) scene.flowers.splice(0, scene.flowers.length - 50);
   return flower;
-}
-
-function seedGarden() {
-  const compact = scene.width < 580;
-  const initial = compact
-    ? [[.15, .401, .53, 4, -.38, .98], [.39, .30, 1.23, 0, .47, -.96],
-      [.75, .385, .83, 2, -.42, 1.02], [.86, .50, .48, 1, -.35, .80],
-      [.57, .646, .69, 3, .38, -.87]]
-    : [[.13, .39, .47, 4, -.32, .90], [.26, .47, .56, 1, -.34, -.85],
-      [.43, .32, 1.19, 0, .45, -.84], [.59, .65, .67, 3, .30, 1.05],
-      [.75, .32, .67, 2, .30, -.91], [.88, .48, .51, 1, -.25, .78]];
-  for (const [x, y, scale, palette, root, bend] of initial) {
-    plant(scene.width * x, scene.height * y, { scale, palette, root, bend });
-  }
 }
 
 function render() {
@@ -163,7 +150,7 @@ function animate(now) {
 }
 
 function start() {
-  if (!frameId && !motion.matches && manual === null && !contextLost && !document.hidden) {
+  if (scene.flowers.length && !frameId && !motion.matches && manual === null && !contextLost && !document.hidden) {
     frameId = requestAnimationFrame(animate);
   }
 }
@@ -178,7 +165,7 @@ function syncMotion() {
 function addFlower(x, y) {
   plant(x, y);
   added++;
-  hint.classList.add('dismissed');
+  start();
   clearTimeout(announcementTimer);
   announcementTimer = setTimeout(() => {
     announcement.textContent = `Roses planted: ${added}.`;
@@ -207,12 +194,10 @@ function addInput() {
 }
 
 if (!ctx) {
-  hint.hidden = true;
   document.querySelector('#failure').hidden = false;
 } else {
   textures = createTextures();
   resize();
-  seedGarden();
   render();
   addInput();
   new ResizeObserver(resize).observe(garden);

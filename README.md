@@ -1,6 +1,6 @@
 # Interactive Neon Flowers
 
-A full-screen procedural neon garden. Click or tap once to grow one flower. The stem grows up from the bottom, the bud emerges, five staggered layers of pink rose petals unfold from the bud, and the flower sways with its stem. Tab into the garden and press Enter or Space to plant with a keyboard. Reduced-motion mode plants fully open flowers and keeps the garden still.
+A full-screen procedural neon garden that opens and reloads as a completely black canvas. Twelve pink shades are selected in a balanced sequence. Click or tap once to grow one flower. The stem grows up from the bottom, the bud emerges, five staggered layers of pink rose petals unfold from the bud, and the flower sways with its stem. Tab into the garden and press Enter or Space to plant with a keyboard. Reduced-motion mode plants fully open flowers and keeps the garden still.
 
 ## Development
 
