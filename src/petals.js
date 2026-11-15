@@ -1,167 +1,144 @@
-import { clamp, mix, petalOpening, smooth } from './motion.js';
+import { mix, roseOpening, smooth } from './motion.js';
 
-// Local petal coordinates are anchored at the receptacle, pointing upward.
-const palettes = [
-  { rim: '#cf137d', mid: '#ff439f', warm: '#ff9a9f', root: '#ffe648', shadow: '#810c4b', edge: '#ff9add', halo: '255,45,145' },
-  { rim: '#9125d9', mid: '#ba54f4', warm: '#ec90f7', root: '#ddf87d', shadow: '#531780', edge: '#ec9aff', halo: '178,64,255' },
-  { rim: '#df7835', mid: '#ffab36', warm: '#ffdf55', root: '#fff590', shadow: '#ae4618', edge: '#ffe995', halo: '255,186,42' },
-  { rim: '#f74bd1', mid: '#e854c4', warm: '#f796df', root: '#fff25a', shadow: '#82106d', edge: '#ffa9ee', halo: '255,60,206' },
-  { rim: '#e52672', mid: '#ff6b87', warm: '#ffb3a5', root: '#fff05b', shadow: '#a92057', edge: '#ffacb7', halo: '255,75,115' },
+// Each palette runs from a shaded crease through the body to the rolled lip.
+export const palettes = [
+  ['#651538', '#d75288', '#ff9ac7', '#ffd1e6', '255,126,181'],
+  ['#671635', '#c73c78', '#ff7fbe', '#ffb6d9', '255,99,169'],
+  ['#671036', '#b82968', '#ff5fb0', '#ffa3cf', '255,78,158'],
+  ['#590c32', '#a51d5b', '#ff4fa3', '#ff94c7', '250,64,153'],
+  ['#51092d', '#92164f', '#eb338d', '#ff80b9', '244,51,141'],
 ];
 
-function sprite(size, draw) {
-  const image = document.createElement('canvas');
-  image.width = image.height = size;
-  draw(image.getContext('2d'), size);
-  return image;
+const TAU = 2 * Math.PI;
+const layers = [
+  { count: 7, radius: .97, height: -.25, span: .73, offset: .1 },
+  { count: 6, radius: .76, height: -.37, span: .84, offset: .53 },
+  { count: 5, radius: .54, height: -.47, span: .98, offset: .90 },
+  { count: 4, radius: .34, height: -.53, span: 1.21, offset: 1.34 },
+  { count: 3, radius: .19, height: -.56, span: 1.56, offset: 1.90 },
+];
+
+// The front walls occlude the bases of the petals behind them. The rings
+// advance in azimuth and contract toward a small open, rolled center.
+export function roseShape(variant) {
+  const petals = layers.flatMap((ring, layer) => {
+    const count = ring.count - (variant === 1 && layer === 1 ? 1 : 0);
+    return Array.from({ length: count }, (_, index) => {
+      const noise = Math.sin((index + 1) * 7.23 + variant * 4.31 + layer * 1.39);
+      const angle = ring.offset + (index + .12 * noise) * TAU / count + variant * .72;
+      return { ring, layer, index, angle, noise, front: Math.sin(angle) };
+    });
+  });
+  return petals.sort((a, b) => {
+    const order = p => p.front > .08 ? 10 - p.layer + p.front * .6 : p.layer + p.front * .6;
+    return order(a) - order(b);
+  });
 }
 
-function silhouette(ctx, curl, edge) {
-  ctx.beginPath();
-  ctx.moveTo(-.06, .07);
-  ctx.bezierCurveTo(-.16, -.09, -.37, -.29, -.45 + edge, -.57);
-  ctx.bezierCurveTo(-.54 + edge, -.82, -.37, -1.02, -.17, -1.035);
-  ctx.bezierCurveTo(-.08, -1.044, -.035, -1.105 + curl, .088, -1.066);
-  ctx.bezierCurveTo(.26, -1.013, .42 - edge, -.88, .425, -.70);
-  ctx.bezierCurveTo(.43, -.45, .23, -.19, .082, .065);
-  ctx.quadraticCurveTo(.018, .113, -.06, .07);
-  ctx.closePath();
-}
-
-function paintPetal(ctx, size, palette, variant) {
-  ctx.translate(size * .5, size * .838);
-  ctx.scale(size * .67, size * .67);
-  silhouette(ctx, variant * .021, variant * .017);
-  const pigment = ctx.createLinearGradient(0, .02, -.075, -1.07);
-  pigment.addColorStop(0, palette.root);
-  pigment.addColorStop(.23, palette.root);
-  pigment.addColorStop(.48, palette.warm);
-  pigment.addColorStop(.72, palette.mid);
-  pigment.addColorStop(.98, palette.rim + 'b0');
-  ctx.shadowColor = 'rgba(' + palette.halo + ',.52)';
-  ctx.shadowBlur = size * .022;
-  ctx.fillStyle = pigment;
-  ctx.fill();
-  ctx.shadowBlur = 0;
-  ctx.save();
-  ctx.clip();
-  const fold = ctx.createLinearGradient(-.5, 0, .5, 0);
-  fold.addColorStop(0, '#27052e65');
-  fold.addColorStop(.21, '#29002943');
-  fold.addColorStop(.44, '#fff0c10e');
-  fold.addColorStop(.63, '#ffefcb63');
-  fold.addColorStop(.77, '#ffffff09');
-  fold.addColorStop(1, '#42002560');
+function petal(ctx, p, open, colors) {
+  const { ring, layer, angle, front, noise } = p;
+  const radius = ring.radius * (1 + noise * .095) * mix(.31, 1, open);
+  const depth = mix(.19, .46, open);
+  const height = mix(-.81 - layer * .036, ring.height, open);
+  const span = ring.span * mix(.70, 1, open);
+  const rootX = Math.cos(angle) * radius * .23;
+  const rootY = height * .32 + front * radius * .07;
+  const lip = (u, dip = 0) => {
+    const a = angle + span * (u + .12 * noise * (1 - u * u));
+    const curl = 1 - .17 * u * u + .045 * Math.sin(u * 4 + angle);
+    return [
+      Math.cos(a) * radius * curl,
+      height + Math.sin(a) * radius * depth * curl
+        - (.12 + noise * .035) * (1 - u * u) * mix(.62, 1, open) + dip,
+    ];
+  };
+  const left = lip(-1), right = lip(1), crest = lip(0);
+  const fold = ctx.createLinearGradient(crest[0], crest[1], rootX, rootY + .025);
+  fold.addColorStop(0, colors[2]);
+  fold.addColorStop(.24, colors[2]);
+  fold.addColorStop(.53, colors[1]);
+  fold.addColorStop(.91, colors[0]);
   ctx.fillStyle = fold;
-  ctx.fillRect(-.62, -1.2, 1.24, 1.3);
-  const light = ctx.createRadialGradient(-.06, -.15, .008, -.06, -.15, .47);
-  light.addColorStop(0, '#fff29e84');
-  light.addColorStop(.47, '#ffe45436');
-  light.addColorStop(1, '#ffe76800');
-  ctx.fillStyle = light;
-  ctx.fillRect(-.62, -1.2, 1.24, 1.3);
-  const veins = ctx.createLinearGradient(0, 0, 0, -.95);
-  veins.addColorStop(0, '#fffaac00');
-  veins.addColorStop(.4, '#ffffd229');
-  veins.addColorStop(.79, '#ffe1ec1e');
-  veins.addColorStop(1, '#ffe1ec00');
-  ctx.strokeStyle = veins;
-  for (let i = -5; i <= 5; i++) {
-    const f = i / 5;
-    ctx.beginPath();
-    ctx.moveTo(f * .025, -.075);
-    ctx.bezierCurveTo(f * .105 - .02, -.31, f * .37 - .033, -.51,
-      f * .41 - .035, -.82 + Math.abs(f) * .13 + Math.sin(i * 13 + variant) * .055);
-    ctx.lineWidth = (i % 3 === 0) ? .009 : .004;
-    ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(rootX, rootY);
+  ctx.bezierCurveTo(mix(rootX, left[0], .82), rootY - .018, left[0] * 1.09, left[1] + .105, ...left);
+  for (let i = 1; i <= 10; i++) ctx.lineTo(...lip(i / 5 - 1));
+  ctx.bezierCurveTo(right[0] * 1.08, right[1] + .10, mix(rootX, right[0], .73), rootY + .015, rootX, rootY);
+  ctx.closePath();
+  ctx.fill();
+
+  // A narrow, tapered lip is lit across its width and falls into the crease.
+  const rim = ctx.createLinearGradient(left[0], left[1], right[0] + .002, right[1] + .002);
+  rim.addColorStop(0, colors[2] + '00');
+  rim.addColorStop(.42, colors[3] + 'd7');
+  rim.addColorStop(.72, colors[3] + 'a0');
+  rim.addColorStop(1, colors[2] + '10');
+  ctx.fillStyle = rim;
+  ctx.beginPath();
+  ctx.moveTo(...left);
+  for (let i = 1; i <= 10; i++) ctx.lineTo(...lip(i / 5 - 1));
+  for (let i = 9; i >= 0; i--) {
+    const u = i / 5 - 1;
+    ctx.lineTo(...lip(u, (.012 + radius * .032) * (1 - u * u)));
   }
-  ctx.restore();
-  ctx.lineWidth = .010;
-  ctx.strokeStyle = palette.edge + '43';
-  ctx.stroke();
+  ctx.fill();
 }
 
-function paintHalo(ctx, size, palette) {
-  const half = size / 2;
-  const g = ctx.createRadialGradient(half, half, 0, half, half, half);
-  g.addColorStop(0, 'rgba(' + palette.halo + ',.39)');
-  g.addColorStop(.39, 'rgba(' + palette.halo + ',.26)');
-  g.addColorStop(.66, 'rgba(' + palette.halo + ',.095)');
-  g.addColorStop(1, 'rgba(' + palette.halo + ',0)');
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, size, size);
-}
-
-function paintCenter(ctx, size) {
-  const half = size / 2;
-  ctx.translate(half, half);
-  ctx.scale(half, half);
-  const glow = ctx.createRadialGradient(0, 0, 0, 0, 0, 1);
-  glow.addColorStop(0, '#ffed78d9');
-  glow.addColorStop(.25, '#ffda7798');
-  glow.addColorStop(.49, '#ffe53946');
-  glow.addColorStop(1, '#ffca1900');
-  ctx.fillStyle = glow;
-  ctx.fillRect(-1, -1, 2, 2);
-  for (let i = 0; i < 12; i++) {
-    const radius = .41 * Math.sqrt(i / 12);
-    const x = Math.cos(i * 2.39996) * radius;
-    const y = Math.sin(i * 2.39996) * radius * .65;
-    ctx.fillStyle = ['#fff895', '#ffe145', '#ffd139', '#fffdb2'][i % 4];
-    ctx.beginPath();
-    ctx.ellipse(x, y, .022 + (i % 3) * .009, .024 + (i % 3) * .008, i, 0, 2 * Math.PI);
-    ctx.fill();
-  }
-}
+const SIZE = 288;
+const UNIT = 116;
+const ANCHOR = 193;
+const SHADES = 3;
 
 export function createTextures() {
-  return {
-    petals: palettes.map(palette => [-2, -1, 0, 1, 2].map(variation =>
-      sprite(272, (ctx, size) => paintPetal(ctx, size, palette, variation)))),
-    halos: palettes.map(palette => sprite(128, (ctx, size) => paintHalo(ctx, size, palette))),
-    center: sprite(128, paintCenter),
-  };
+  const shapes = Array.from({ length: SHADES }, (_, i) => roseShape(i));
+  const blooms = palettes.map(colors => shapes.map(shape => {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = SIZE;
+    const ctx = canvas.getContext('2d');
+    ctx.translate(SIZE / 2, ANCHOR);
+    ctx.scale(UNIT, UNIT);
+    paint(ctx, shape, colors, null, 3, false);
+    return canvas;
+  }));
+  return { shapes, blooms };
 }
 
-// Back petals climb, side petals flare, and the foreground petal is foreshortened.
-const profiles = [
-  { angle: -.14, fan: -.45, length: .96, width: .68, curl: -.14 },
-  { angle: .11, fan: .21, length: 1.08, width: .73, curl: .09 },
-  { angle: -.23, fan: -1.02, length: .94, width: .62, curl: -.19 },
-  { angle: .24, fan: .94, length: .91, width: .71, curl: .21 },
-  { angle: .05, fan: 1.56, length: .67, width: .51, curl: .30 },
-];
+function paint(ctx, shape, colors, flower, age, lowQuality) {
+  const bloom = flower ? roseOpening(flower, age, 1, 0) : 1;
+  if (!lowQuality) {
+    const halo = ctx.createRadialGradient(0, -.45, .03, 0, -.45, mix(.72, 1.19, bloom));
+    halo.addColorStop(0, 'rgba(' + colors[4] + ',.31)');
+    halo.addColorStop(.58, 'rgba(' + colors[4] + ',.12)');
+    halo.addColorStop(1, 'rgba(' + colors[4] + ',0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(-1.23, -1.65, 2.46, 2.37);
+  }
+  for (const p of shape) petal(ctx, p, flower ? roseOpening(flower, age, p.layer, p.index) : 1, colors);
+}
 
 export function drawFlower(ctx, flower, age, growth, tip, textures, alpha, tilt, lowQuality) {
-  const { center, bud } = growth;
-  if (bud <= 0) return;
-  const base = flower.radius * mix(.31, 1, smooth((age - flower.stemTime + .21) / .64));
+  if (growth.bud <= 0 || alpha <= 0) return;
+  const radius = flower.radius * mix(.46, 1, growth.bud);
+  const settled = age >= flower.stemTime + flower.petalTime + .67;
   ctx.save();
   ctx.translate(tip.x, tip.y);
   ctx.rotate(tilt);
-  ctx.scale(flower.aspect * 1.13, flower.pitch);
-  if (!lowQuality) {
-    const radius = base * mix(.63, 1.37, center);
-    ctx.globalAlpha = alpha * bud * mix(.16, .39, center);
-    ctx.drawImage(textures.halos[flower.palette], -radius, -radius - base * .25, radius * 2, radius * 2);
+  ctx.scale(radius * flower.aspect, radius * flower.pitch);
+  ctx.globalAlpha = alpha * growth.bud;
+  // The small, curved sepals clasp the base following the same head transform.
+  ctx.fillStyle = '#488357';
+  for (const side of [-1, 1]) {
+    ctx.beginPath();
+    ctx.moveTo(0, .025);
+    ctx.quadraticCurveTo(side * .13, .013, side * .24, -.19);
+    ctx.quadraticCurveTo(side * .09, -.08, 0, -.10);
+    ctx.fill();
   }
-  for (let i = 0; i < profiles.length; i++) {
-    const profile = profiles[i];
-    const open = petalOpening(flower, age, i);
-    const jitter = flower.variations[i];
-    const along = base * mix(.80, profile.length * jitter, open);
-    const across = base * mix(.22, profile.width * (2 - jitter), open);
-    const angle = profile.angle + profile.fan * open + (jitter - 1) * .65;
-    ctx.save();
-    ctx.globalAlpha = alpha * bud * (i === 4 ? mix(.53, .77, clamp(open)) : 1);
-    ctx.rotate(angle);
-    ctx.transform(1, profile.curl * open, profile.curl * open * .2, 1, 0, 0);
-    ctx.drawImage(textures.petals[flower.palette][(i + flower.textureOffset) % 5],
-      -across * .746, -along * 1.25, across / .67, along / .67);
-    ctx.restore();
+  if (settled) {
+    ctx.drawImage(textures.blooms[flower.palette][flower.variant],
+      -SIZE / (2 * UNIT), -ANCHOR / UNIT, SIZE / UNIT, SIZE / UNIT);
+  } else {
+    paint(ctx, textures.shapes[flower.variant], palettes[flower.palette], flower, age, lowQuality);
   }
-  const radius = base * mix(.10, .44, center);
-  ctx.globalAlpha = alpha * center;
-  ctx.drawImage(textures.center, -radius, -radius - base * .12, radius * 2, radius * 2);
   ctx.restore();
 }

@@ -48,7 +48,7 @@ try {
       const canvas = document.querySelector('canvas');
       const ctx = canvas.getContext('2d');
       const p = gardenQA.snapshot().flowers[0].tip;
-      const pixel = ctx.getImageData(p.x * canvas.width / innerWidth, (p.y - 3) * canvas.height / innerHeight, 1, 1).data;
+      const pixel = ctx.getImageData(p.x * canvas.width / innerWidth, (p.y - gardenQA.snapshot().flowers[0].radius * .45) * canvas.height / innerHeight, 1, 1).data;
       return pixel[0] + pixel[1] + pixel[2] > 80;
     });
     assert.ok(hasFlowerPixels, 'rendered flower pixels');
@@ -73,7 +73,7 @@ try {
   const planted = (await snapshot(stage)).flowers.at(-1);
   await capture(stage, 'motion-01-feedback');
   assert.equal(planted.progress.stem, 0);
-  const times = [.37, planted.stem * .99, planted.stem + .31, 1.8, 2.85];
+  const times = [.37, planted.stem * .99, planted.stem + .53, 2.45, 3.2];
   const names = ['02-stem', '03-bud', '04-opening', '05-bloom', '06-sway'];
   let previous = 0;
   let settledTip;

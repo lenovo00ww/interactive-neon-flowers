@@ -15,13 +15,13 @@ export function seededRandom(seed) {
 export function growthAt(flower, age, result = {}) {
   result.stem = smooth(age / flower.stemTime);
   result.bud = smooth((age - flower.stemTime * .74) / .26);
-  result.center = smooth((age - flower.stemTime - .11) / .44);
+  result.center = smooth((age - flower.stemTime - .30) / .80);
   return result;
 }
 
-export function petalOpening(flower, age, index) {
-  const t = clamp((age - flower.stemTime + .07 - index * .044) / flower.petalTime);
-  return smooth(t) + Math.sin(Math.PI * t) * t ** 2 * .20;
+export function roseOpening(flower, age, layer, index) {
+  const t = clamp((age - flower.stemTime + .03 - layer * .105 - index * .022) / flower.petalTime);
+  return smooth(t) + Math.sin(Math.PI * t) * t ** 3 * .16;
 }
 
 export function stemPoint(out, t, root, tip, bend, bottom, top, sway) {

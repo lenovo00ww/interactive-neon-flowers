@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { growthAt, petalOpening, seededRandom, stemPoint } from '../src/motion.js';
+import { growthAt, roseOpening, seededRandom, stemPoint } from '../src/motion.js';
 import { constrain, place } from '../src/placement.js';
 
 const flower = { stemTime: .83, petalTime: .53 };
@@ -11,9 +11,9 @@ test('growth has separate stem, bud, and center phases', () => {
   assert.deepEqual(growthAt(flower, 2), { stem: 1, bud: 1, center: 1 });
 });
 test('petals stagger and settle after a small overshoot', () => {
-  assert.ok(petalOpening(flower, 1.1, 0) > petalOpening(flower, 1.1, 4));
-  assert.ok(petalOpening(flower, 1.24, 0) > 1);
-  assert.equal(petalOpening(flower, 2, 0), 1);
+  assert.ok(roseOpening(flower, 1.1, 0, 0) > roseOpening(flower, 1.1, 4, 0));
+  assert.ok(roseOpening(flower, 1.30, 0, 0) > 1);
+  assert.equal(roseOpening(flower, 2, 0, 0), 1);
 });
 test('curve keeps the root still and connects its endpoint to the moving head', () => {
   assert.deepEqual(stemPoint({}, 0, 50, 100, 20, 300, 20, 8), { x: 50, y: 300 });
@@ -35,4 +35,12 @@ test('seeded scenes reproduce exactly', () => {
   const first = seededRandom(3);
   const second = seededRandom(3);
   for (let i = 0; i < 100; i++) assert.equal(first(), second());
+});
+
+test('outer, middle and core layers unfold in order and all settle', () => {
+  const age = flower.stemTime + .49;
+  const opening = [0, 2, 4].map(layer => roseOpening(flower, age, layer, 0));
+  assert.ok(opening[0] > opening[1] && opening[1] > opening[2] && opening[2] > 0);
+  assert.ok(roseOpening(flower, age, 0, 0) > roseOpening(flower, age, 0, 6));
+  for (let layer = 0; layer < 5; layer++) assert.equal(roseOpening(flower, 2.3, layer, 0), 1);
 });

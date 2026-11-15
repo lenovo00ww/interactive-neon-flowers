@@ -1,5 +1,5 @@
 import './style.css';
-import { clamp, growthAt, petalOpening, seededRandom, smooth } from './motion.js';
+import { clamp, growthAt, roseOpening, seededRandom, smooth } from './motion.js';
 import { constrain, flowerSize, place } from './placement.js';
 import { createTextures, drawFlower } from './petals.js';
 import { drawStem } from './stem.js';
@@ -68,18 +68,17 @@ function plant(x, y, preset) {
     nx: position.x / scene.width, ny: position.y / scene.height,
     born: clock - (preset ? 3 : 0), retired: null,
     stemTime: .63 + random() * .34,
-    petalTime: .48 + random() * .15,
+    petalTime: .58 + random() * .16,
     root: preset?.root ?? (random() - .5) * 1.65,
     bend: preset?.bend ?? (random() - .5) * 2.3,
     phase: random() * Math.PI * 2,
     speed: .53 + random() * .45,
     depth: .74 + random() * .26,
     aspect: .89 + random() * .22,
-    pitch: .69 + .38 * (Math.sin(position.x * .083 + position.y) * .5 + .5),
+    pitch: .86 + .24 * (Math.sin(position.x * .083 + position.y) * .5 + .5),
     tilt: (random() - .5) * .53,
     green: Math.floor(random() * 3),
-    textureOffset: Math.floor(random() * 5),
-    variations: Array.from({ length: 5 }, () => .87 + random() * .27),
+    variant: Math.floor(random() * 3),
     tip: { x: 0, y: 0 },
     growth: {},
   };
@@ -98,11 +97,11 @@ function plant(x, y, preset) {
 function seedGarden() {
   const compact = scene.width < 580;
   const initial = compact
-    ? [[.15, .401, .53, 4, -.38, .98], [.40, .32, 1.10, 0, .47, -.96],
-      [.76, .362, .72, 2, -.42, 1.02], [.86, .50, .48, 1, -.35, .80],
+    ? [[.15, .401, .53, 4, -.38, .98], [.39, .30, 1.23, 0, .47, -.96],
+      [.75, .385, .83, 2, -.42, 1.02], [.86, .50, .48, 1, -.35, .80],
       [.57, .646, .69, 3, .38, -.87]]
     : [[.13, .39, .47, 4, -.32, .90], [.26, .47, .56, 1, -.34, -.85],
-      [.43, .32, 1.04, 0, .45, -.84], [.59, .65, .67, 3, .30, 1.05],
+      [.43, .32, 1.19, 0, .45, -.84], [.59, .65, .67, 3, .30, 1.05],
       [.75, .32, .67, 2, .30, -.91], [.88, .48, .51, 1, -.25, .78]];
   for (const [x, y, scale, palette, root, bend] of initial) {
     plant(scene.width * x, scene.height * y, { scale, palette, root, bend });
@@ -182,7 +181,7 @@ function addFlower(x, y) {
   hint.classList.add('dismissed');
   clearTimeout(announcementTimer);
   announcementTimer = setTimeout(() => {
-    announcement.textContent = `Flowers planted: ${added}.`;
+    announcement.textContent = `Roses planted: ${added}.`;
   }, 150);
   if (motion.matches || manual !== null) render();
 }
@@ -245,7 +244,8 @@ if (!ctx) {
           x: flower.position.x, y: flower.position.y, tip: { ...flower.tip },
           stem: flower.stemTime, petals: flower.petalTime, radius: flower.radius,
           progress: growthAt(flower, motion.matches ? 3 : clock - flower.born),
-          opening: Array.from({ length: 5 }, (_, index) => petalOpening(flower, flower.age, index)),
+          opening: Array.from({ length: 5 }, (_, layer) => roseOpening(flower, flower.age, layer, 0)),
+          palette: flower.palette,
         })),
       }),
       freeze: () => { manual = clock; syncMotion(); },
